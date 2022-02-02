@@ -4,10 +4,11 @@ from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 import uuid
 import jwt
-import datetime
+from datetime import datetime, timedelta
 from functools import wraps
 from flask_marshmallow import Marshmallow
 from enum import Enum
+
 
 app = Flask(__name__) 
 
@@ -67,8 +68,8 @@ class Event_Schema(ma.Schema):
 user_schema = User_Schema()
 users_schema = User_Schema(many=True)
 
-publication_schema = Event_Schema()
-publications_schema = Event_Schema(many=True)
+event_schema = Event_Schema()
+events_schema = Event_Schema(many=True)
 
 # ---------------
 # Auth function
@@ -96,6 +97,7 @@ def token_required(f):
 class SignupResource(Resource):
   def post(self):
     data = request.json
+    print(data)
     hashed_password = generate_password_hash(data['password'], method='sha256')
     new_user = User(email=data['email'], password=hashed_password) 
     db.session.add(new_user)
@@ -108,34 +110,43 @@ class LoginResource(Resource):
     # if not auth or not auth.email or not auth.password:
     # return make_response('unauthorized', 401, {'WWW.Authentication': 'Basic realm: "login required"'})    
     user = User.query.filter_by(email=request.json['email']).first()
-    if check_password_hash(user.password, request.json['password']):
-      token = jwt.encode({'email': user.email, 'exp' : datetime.datetime.utcnow() + datetime.timedelta(hours=2)}, app.config['SECRET_KEY'])  
-      return jsonify({'token' : token})
-    return make_response('could not verify', 401, {'WWW.Authentication': 'Basic realm: "login required"'})
 
-class GetEventsResource(Resource):
+    if user and check_password_hash(user.password, request.json['password']):
+      token = jwt.encode({'email': user.email, 'exp' : datetime.utcnow() + timedelta(hours=2)}, app.config['SECRET_KEY'])  
+      return jsonify({'token' : token})
+    else:
+      return make_response('Wrong user or password', 401, {'WWW.Authentication': 'Basic realm: "login required"'})
+
+class EventsResource(Resource):
   @token_required
   def get(self, current_user):
     print("No sé qué poner", self)
     print("No sé qué poner", current_user)
     events = Event.query.filter_by(owner=current_user.email).all()
-    return publications_schema.dump(events)
+    return events_schema.dump(events)
   
   @token_required
-  def post(self):
-    nueva_publicacion = Event(
-        title = request.json['title'],
-        content = request.json['content']
+  def post(self, current_user):
+    new_event = Event(
+      name = request.json['name'],
+      category = request.json['category'],
+      place = request.json['place'],
+      address = request.json['address'],
+      start = datetime.strptime(request.json["start"], "%d/%m/%Y"),
+      end = datetime.strptime(request.json["end"], "%d/%m/%Y"),
+      modality = request.json['modality'],
+      owner = current_user.email
     )
-    db.session.add(nueva_publicacion)
+    print(new_event)
+    db.session.add(new_event)
     db.session.commit()
-    return publications_schema.dump(nueva_publicacion)
+    return event_schema.dump(new_event)
 
 class SpecificEventResource(Resource):
   @token_required
   def get(self, event_id):
       event = Event.query.get_or_404(event_id)
-      return publications_schema.dump(event)
+      return events_schema.dump(event)
   
   @token_required
   def put(self, current_user, event_id):
@@ -146,7 +157,7 @@ class SpecificEventResource(Resource):
           event.content = request.json['content']
 
       db.session.commit()
-      return publications_schema.dump(event)
+      return events_schema.dump(event)
 
   @token_required
   def delete(self, event_id):
@@ -157,7 +168,7 @@ class SpecificEventResource(Resource):
 
 api.add_resource(SignupResource, '/auth/signup')
 api.add_resource(LoginResource, '/auth/login')
-api.add_resource(GetEventsResource, '/events')
+api.add_resource(EventsResource, '/events')
 api.add_resource(SpecificEventResource, '/events/<int:event_id>')
 
 if __name__ == '__main__':
