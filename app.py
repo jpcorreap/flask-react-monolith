@@ -1,101 +1,164 @@
 from flask import Flask, request, jsonify, make_response   
+from flask_restful import Api, Resource
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
-import uuid 
+import uuid
 import jwt
 import datetime
 from functools import wraps
-
+from flask_marshmallow import Marshmallow
+from enum import Enum
 
 app = Flask(__name__) 
 
-
 app.config['SECRET_KEY'] = 'este_es_un_secreto'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite://///home/michael/geekdemos/geekapp/library.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///test.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = True
 
-db = SQLAlchemy(app)   
+db = SQLAlchemy(app)
+ma = Marshmallow(app)
+api = Api(app)
 
-class Users(db.Model):  
+with app.app_context():
+  db.create_all()
+
+# ------
+# Enums
+# ------
+class Categories(str, Enum):
+  CONFERENCE = "Conferencia"
+  SEMINAR = "Seminario"
+  CONGRESS = "Congreso"
+  COURSE = "Curso"
+
+class Modalities(str, Enum):
+  FACE_TO_FACE = "Presencial"
+  VIRTUAL = "Virtual"
+
+# ---------------------
+#  Classes and schemas
+# ---------------------
+class User(db.Model):
+  __tablename__ = "user"
   email = db.Column(db.String(50), primary_key=True)
   password = db.Column(db.String(50))
+  events = db.relationship("Event", backref="event", cascade="all, delete-orphan")
 
-def token_required(f):  
-    @wraps(f)  
-    def decorator(*args, **kwargs):
-       token = None 
+class User_Schema(ma.Schema):
+  class Meta:
+    fields = ("email", "password")
 
-       if 'x-access-tokens' in request.headers:  
-          token = request.headers['x-access-tokens'] 
+class Event(db.Model):
+  __tablename__ = "event"
+  id = db.Column(db.Integer, primary_key=True)
+  name = db.Column(db.String(50))
+  category = db.Column(db.String(50))
+  place = db.Column(db.String(255))
+  address = db.Column(db.String(255))
+  start = db.Column(db.DateTime)
+  end = db.Column(db.DateTime)
+  modality = db.Column(db.String(50))
+  owner = db.Column(db.String(50), db.ForeignKey("user.email"), nullable=False)
 
-       if not token:  
-          return jsonify({'message': 'a valid token is missing'})   
+class Event_Schema(ma.Schema):
+  class Meta:
+    fields = ("id", "name", "category", "place", "address", "start", "end", "modality", "owner")
 
-       try:  
-          data = jwt.decode(token, app.config[SECRET_KEY]) 
-          current_user = Users.query.filter_by(public_id=data['public_id']).first()  
-       except:  
-          return jsonify({'message': 'token is invalid'})  
+user_schema = User_Schema()
+users_schema = User_Schema(many=True)
 
-          return f(current_user, *args,  **kwargs)  
-    return decorator 
+publication_schema = Event_Schema()
+publications_schema = Event_Schema(many=True)
 
+# ---------------
+# Auth function
+# ---------------
+def token_required(f):
+  @wraps(f)
+  def decorator(*args, **kwargs):
+    token = None
+    if 'Authorization' in request.headers and 'Bearer' in request.headers['Authorization']:
+      token = request.headers['Authorization'].split(" ")[1]
+      print("Token", token)
+    if not token:
+      return jsonify({'message': 'unauthorized'})
+    try:
+      data = jwt.decode(token, app.config['SECRET_KEY'], algorithms=["HS256"])
+      current_user = User.query.filter_by(email=data['email']).first()
+    except:
+      return jsonify({'message': 'token is invalid'})
+    return f(*args, current_user, **kwargs)
+  return decorator
 
-@app.route('/register', methods=['GET', 'POST'])
-def signup_user():  
-  data = request.get_json()  
-  hashed_password = generate_password_hash(data['password'], method='sha256')
+# --------------
+# API Resources
+# --------------
+class SignupResource(Resource):
+  def post(self):
+    data = request.json
+    hashed_password = generate_password_hash(data['password'], method='sha256')
+    new_user = User(email=data['email'], password=hashed_password) 
+    db.session.add(new_user)
+    db.session.commit()
+    return jsonify({'message': 'registered successfully'})
 
-  new_user = Users(public_id=str(uuid.uuid4()), name=data['name'], password=hashed_password, admin=False) 
-  db.session.add(new_user)  
-  db.session.commit()    
+class LoginResource(Resource):
+  def post(self):
+    # auth = request.authorization
+    # if not auth or not auth.email or not auth.password:
+    # return make_response('unauthorized', 401, {'WWW.Authentication': 'Basic realm: "login required"'})    
+    user = User.query.filter_by(email=request.json['email']).first()
+    if check_password_hash(user.password, request.json['password']):
+      token = jwt.encode({'email': user.email, 'exp' : datetime.datetime.utcnow() + datetime.timedelta(hours=2)}, app.config['SECRET_KEY'])  
+      return jsonify({'token' : token})
+    return make_response('could not verify', 401, {'WWW.Authentication': 'Basic realm: "login required"'})
 
-  return jsonify({'message': 'registered successfully'})   
+class GetEventsResource(Resource):
+  @token_required
+  def get(self, current_user):
+    print("No sé qué poner", self)
+    print("No sé qué poner", current_user)
+    events = Event.query.filter_by(owner=current_user.email).all()
+    return publications_schema.dump(events)
+  
+  @token_required
+  def post(self):
+    nueva_publicacion = Event(
+        title = request.json['title'],
+        content = request.json['content']
+    )
+    db.session.add(nueva_publicacion)
+    db.session.commit()
+    return publications_schema.dump(nueva_publicacion)
 
+class SpecificEventResource(Resource):
+  @token_required
+  def get(self, event_id):
+      event = Event.query.get_or_404(event_id)
+      return publications_schema.dump(event)
+  
+  @token_required
+  def put(self, current_user, event_id):
+      event = Event.query.get_or_404(event_id, owner=current_user.email).first()
+      if 'title' in request.json:
+          event.title = request.json['title']
+      if 'content' in request.json:
+          event.content = request.json['content']
 
-@app.route('/login', methods=['GET', 'POST'])  
-def login_user(): 
-  auth = request.authorization   
+      db.session.commit()
+      return publications_schema.dump(event)
 
-  if not auth or not auth.username or not auth.password:  
-    return make_response('could not verify', 401, {'WWW.Authentication': 'Basic realm: "login required"'})    
+  @token_required
+  def delete(self, event_id):
+      publicacion = Event.query.get_or_404(event_id)
+      db.session.delete(publicacion)
+      db.session.commit()
+      return '', 204
 
-  user = Users.query.filter_by(name=auth.username).first()   
-
-  if check_password_hash(user.password, auth.password):  
-    token = jwt.encode({'email': user.email, 'exp' : datetime.datetime.utcnow() + datetime.timedelta(minutes=30)}, app.config['SECRET_KEY'])  
-    return jsonify({'token' : token.decode('UTF-8')}) 
-
-  return make_response('could not verify',  401, {'WWW.Authentication': 'Basic realm: "login required"'})
-
-
-@app.route('/user', methods=['GET'])
-def get_all_users():  
-   users = Users.query.all() 
-   result = []   
-
-   for user in users:   
-       user_data = {}   
-       user_data['email'] = user.email  
-       user_data['password'] = user.password
-       
-       result.append(user_data)   
-
-   return jsonify({'users': result})  
-
-
-@app.route('/cases', methods=['GET', 'POST']) 
-@token_required 
-def get_cases(current_user, public_id):  
-    cases = [1, 2, 3, 4]
-    return jsonify({'cases' : cases})
-
-
-@app.route('/cases/<name>', methods=['GET'])
-@token_required
-def delete_author(current_user, name):
-    return jsonify({'message': 'Case ' + name})
-
+api.add_resource(SignupResource, '/auth/signup')
+api.add_resource(LoginResource, '/auth/login')
+api.add_resource(GetEventsResource, '/events')
+api.add_resource(SpecificEventResource, '/events/<int:event_id>')
 
 if __name__ == '__main__':
     app.run(debug=True)

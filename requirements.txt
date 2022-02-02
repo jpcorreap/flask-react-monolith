@@ -1,4 +1,7 @@
 Flask
+flask_restful
+flask_marshmallow
+marshmallow-sqlalchemy
 PyJWT
 uuid
 Flask-SQLAlchemy
