@@ -2,12 +2,27 @@ import { Grid, TextField, Button, Alert } from "@mui/material";
 import React, { useState } from "react";
 import logo from "../assets/full_size_logo.png";
 import { Link } from "react-router-dom";
+import useFetchRequest from "../hooks/useFetchRequest";
 
 function Register() {
   const [state, setState] = useState({ email: "", password: "" });
+  const { post } = useFetchRequest();
 
   const handleChange = (e) => {
-    setState({ [e.currentTarget.id]: e.currentTarget.value });
+    setState({ ...state, [e.currentTarget.id]: e.currentTarget.value });
+  };
+
+  const handleRegister = () => {
+    console.info(state);
+    post("/auth/login", state)
+      .then((response) => {
+        if (response.status === 200)
+          alert("Usuario creado exitosamente, diríjase a la pantalla de login");
+      })
+      .catch((e) => {
+        alert("Usuario ya existente");
+        // console.error(e);
+      });
   };
 
   return (
@@ -45,25 +60,32 @@ function Register() {
         <h1 style={{ color: "#978C87" }}>Registro de usuarios</h1>
         <br />
         <TextField
-          id="outlined-basic"
+          id="email"
           label="Correo electrónico *"
           variant="outlined"
           type={"email"}
           style={{ backgroundColor: "white" }}
-          onChange={(e) => console.info(e.target.value)}
+          value={state.email}
+          onChange={handleChange}
         />
         <br />
         <TextField
-          id="outlined-basic"
+          id="password"
           label="Contraseña *"
           variant="outlined"
           type={"password"}
           style={{ backgroundColor: "white" }}
+          value={state.password}
+          onChange={handleChange}
         />
         <br />
         <br />
 
-        <Button variant="contained" style={{ backgroundColor: "#3E2B2E" }}>
+        <Button
+          variant="contained"
+          style={{ backgroundColor: "#3E2B2E" }}
+          onClick={handleRegister}
+        >
           Registrarse
         </Button>
         <p>

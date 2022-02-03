@@ -84,7 +84,7 @@ class SignupResource(Resource):
 class LoginResource(Resource):
   def post(self):
     user = User.query.filter_by(email=request.json["email"]).first()
-    if check_password_hash(user.password, request.json["password"]):
+    if user and check_password_hash(user.password, request.json["password"]):
       access_token = create_access_token(
         identity=user.email, expires_delta=timedelta(hours=2)
       )
