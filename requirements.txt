@@ -4,7 +4,6 @@ flask_cors
 flask_marshmallow
 marshmallow-sqlalchemy
 PyJWT
-uuid
 Flask-SQLAlchemy
 datetime
 flask_jwt_extended

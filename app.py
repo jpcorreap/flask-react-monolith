@@ -3,7 +3,6 @@ from flask_restful import Api, Resource
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import except_
 from werkzeug.security import generate_password_hash, check_password_hash
-import uuid
 from flask_jwt_extended import get_jwt_identity, jwt_required, create_access_token, JWTManager
 from datetime import datetime, timedelta
 from functools import wraps
@@ -12,8 +11,7 @@ from enum import Enum
 from flask_cors import CORS
 
 
-app = Flask(__name__)
-# app = Flask(__name__, static_folder="front/build", static_url_path="/")
+app = Flask(__name__, static_folder="front/build", static_url_path="/")
 CORS(app)
 
 app.config['SECRET_KEY'] = 'este_es_un_secreto'
@@ -157,6 +155,10 @@ api.add_resource(SignupResource, '/auth/signup')
 api.add_resource(LoginResource, '/auth/login')
 api.add_resource(EventsResource, '/events')
 api.add_resource(SpecificEventResource, '/events/<int:event_id>')
+
+@app.route("/")
+def serve():
+    return app.send_static_file("index.html")
 
 if __name__ == '__main__':
     app.run(debug=True)
