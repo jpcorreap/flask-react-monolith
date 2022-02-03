@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -18,9 +18,15 @@ import {
   TableRow,
   Tooltip,
 } from "@mui/material";
+import useFetchRequest from "../hooks/useFetchRequest";
 
-function EventsList({ rows, onClick, isLoading = false }) {
+function EventsList({ token, onClick }) {
+  const { get } = useFetchRequest();
+  const [rows, setRows] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+
   onClick = (action, id) => alert(`Hacer ${action} sobre ${id}`);
+
   const [currentPage, setCurrentPage] = useState(0);
   const [pagination, setPagination] = useState([0, 7]);
   const columns = useMemo(
@@ -61,6 +67,17 @@ function EventsList({ rows, onClick, isLoading = false }) {
     ],
     [onClick]
   );
+
+  useEffect(() => {
+    console.info("JIJJIJIII");
+    setIsLoading(true);
+    get("/events", token)
+      .then((response) => response.json())
+      .then((data) => {
+        setIsLoading(false);
+        setRows(data);
+      });
+  }, [get, token]);
 
   const handleChangePage = (event, newPage) => {
     console.info({ event });
@@ -115,87 +132,92 @@ function EventsList({ rows, onClick, isLoading = false }) {
   }, []);
 
   return (
-    <Paper
-      style={{
-        width: "100%",
-      }}
-    >
-      <div style={{ height: "5px" }}>
-        {isLoading ? <LinearProgress /> : <></>}
-      </div>
-      <TableContainer
-        style={{
-          width: "100%",
-          minHeight: 465,
-          "& > * + *": {
-            marginTop: 20,
-          },
-        }}
-      >
-        <Table stickyHeader aria-label="sticky table" size="small">
-          <colgroup>
-            {columns.map((column, i) => (
-              <col key={"colWidth_" + i} width={400} />
-            ))}
-          </colgroup>
-          <TableHead>
-            <TableRow>
-              {columns.map((column) => (
-                <TableCell key={column.id}>{column.headerName}</TableCell>
-              ))}
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {!isLoading ? (
-              rows.length ? (
-                rows
-                  .slice(pagination[0], pagination[1])
-                  .map((row) => createRow(row))
-              ) : (
-                <TableRow hover={true} role="checkbox" tabIndex={-1}>
-                  <TableCell colSpan={5}>
-                    <p>No se encontraron resultados</p>
-                  </TableCell>
+    <div>
+      <div style={{ margin: 20 }}>
+        <Paper
+          style={{
+            width: "100%",
+          }}
+        >
+          <div style={{ height: "5px" }}>
+            {isLoading ? <LinearProgress /> : <></>}
+          </div>
+          <TableContainer
+            style={{
+              width: "100%",
+              minHeight: 465,
+              "& > * + *": {
+                marginTop: 20,
+              },
+            }}
+          >
+            <Table stickyHeader aria-label="sticky table" size="small">
+              <colgroup>
+                {columns.map((column, i) => (
+                  <col key={"colWidth_" + i} width={400} />
+                ))}
+              </colgroup>
+              <TableHead>
+                <TableRow>
+                  {columns.map((column) => (
+                    <TableCell key={column.id}>{column.headerName}</TableCell>
+                  ))}
                 </TableRow>
-              )
-            ) : (
-              <TableRow hover={true} role="checkbox" tabIndex={-1}>
-                <TableCell colSpan={5}>
-                  <p>Cargando...</p>
-                </TableCell>
-              </TableRow>
-            )}
-            {/*error && (
+              </TableHead>
+              <TableBody>
+                {!isLoading ? (
+                  rows.length ? (
+                    rows
+                      .slice(pagination[0], pagination[1])
+                      .map((row) => createRow(row))
+                  ) : (
+                    <TableRow hover={true} role="checkbox" tabIndex={-1}>
+                      <TableCell colSpan={5}>
+                        <p>No se encontraron resultados</p>
+                      </TableCell>
+                    </TableRow>
+                  )
+                ) : (
+                  <TableRow hover={true} role="checkbox" tabIndex={-1}>
+                    <TableCell colSpan={5}>
+                      <p>Cargando...</p>
+                    </TableCell>
+                  </TableRow>
+                )}
+                {/*error && (
               <TableRow hover={true} role="checkbox" tabIndex={-1}>
                 <TableCell colSpan={5}>
                   <p>{error}</p>
                 </TableCell>
               </TableRow>
             )*/}
-          </TableBody>
-        </Table>
-      </TableContainer>
-      <Button variant="outlined" fullWidth startIcon={<AddCircleIcon />}>
-        Crear un evento nuevo
-      </Button>
-      <TablePagination
-        rowsPerPageOptions={[]}
-        component={"div"}
-        count={rows?.length}
-        rowsPerPage={7}
-        backIconButtonText={"Anterior"}
-        nextIconButtonText={"Siguiente"}
-        page={currentPage}
-        onPageChange={handleChangePage}
-        labelDisplayedRows={({ from, to, count, page }) =>
-          `Página ${
-            page + 1
-          }: mostrando de ${from} a ${to} registros de un total de ${
-            count !== -1 ? count : 0
-          }`
-        }
-      />
-    </Paper>
+              </TableBody>
+            </Table>
+          </TableContainer>
+          <Button variant="outlined" fullWidth startIcon={<AddCircleIcon />}>
+            Crear un evento nuevo
+          </Button>
+          <TablePagination
+            rowsPerPageOptions={[]}
+            component={"div"}
+            count={rows?.length}
+            rowsPerPage={7}
+            backIconButtonText={"Anterior"}
+            nextIconButtonText={"Siguiente"}
+            page={currentPage}
+            onPageChange={handleChangePage}
+            labelDisplayedRows={({ from, to, count, page }) =>
+              `Página ${
+                page + 1
+              }: mostrando de ${from} a ${to} registros de un total de ${
+                count !== -1 ? count : 0
+              }`
+            }
+          />
+        </Paper>
+      </div>
+      <p>Modal</p>
+    </div>
   );
 }
 

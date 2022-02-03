@@ -4,7 +4,7 @@ import logo from "../assets/full_size_logo.png";
 import { Link } from "react-router-dom";
 import useFetchRequest from "../hooks/useFetchRequest";
 
-function Login() {
+function Login({ setUsername, setToken }) {
   const [state, setState] = useState({ email: "", password: "" });
   const { post } = useFetchRequest();
 
@@ -14,9 +14,19 @@ function Login() {
 
   const handleLogin = () => {
     console.info(state);
-    post("http://localhost:5000/auth/login", state)
-      .then((response) => response.json())
-      .then((response) => localStorage.setItem("token", response.token));
+    post("/auth/login", state)
+      .then((response) => {
+        if (response.status === 401) alert("Usuario o contraseña inválidos");
+        else return response.json();
+      })
+      .then((response) => {
+        setUsername(state.email);
+        setToken(response.token);
+      })
+      .catch((e) => {
+        const a = 1 + 1;
+        // console.error(e);
+      });
   };
 
   return (
@@ -85,7 +95,6 @@ function Login() {
         <p>
           ¿No tienes una cuenta? <Link to="/register">Regístrate</Link>.
         </p>
-        <Alert severity="warning">Usuario o contraseña incorrectos</Alert>
       </Grid>
     </Grid>
   );

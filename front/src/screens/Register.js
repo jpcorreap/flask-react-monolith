@@ -69,9 +69,6 @@ function Register() {
         <p>
           ¿Ya tienes una cuenta? <Link to="/">Inicia sesión</Link>.
         </p>
-        <Alert severity="warning">
-          Ya existe un usuario con ese correo electrónico
-        </Alert>
       </Grid>
     </Grid>
   );

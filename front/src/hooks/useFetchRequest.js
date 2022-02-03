@@ -1,11 +1,12 @@
 import { useCallback, useMemo } from "react";
 
+const fetch_url = "http://localhost:5000";
+
 export default function useFetchRequest() {
-  const _getHeaders = useCallback(async () => {
+  const _getHeaders = useCallback(async (token) => {
     const headers = new Headers();
     headers.append("Content-Type", "application/json");
-    const token = localStorage.getItem("token");
-    headers.append("Authorization", `Bearer ${token}`);
+    if (token) headers.append("Authorization", `Bearer ${token}`);
     return headers;
   }, []);
 
@@ -27,23 +28,23 @@ export default function useFetchRequest() {
 
   return useMemo(
     () => ({
-      async get(path) {
-        const headers = await _getHeaders();
-        return fetch(path, { headers, method: "GET" });
+      async get(path, token) {
+        const headers = await _getHeaders(token);
+        return fetch(fetch_url + path, { headers, method: "GET" });
       },
 
-      async patch(path, body) {
-        const headers = await _getHeaders();
-        return fetch(path, {
+      async patch(path, body, token) {
+        const headers = await _getHeaders(token);
+        return fetch(fetch_url + path, {
           headers,
           method: "PATCH",
           body: JSON.stringify(body),
         });
       },
 
-      async post(path, body) {
-        const headers = await _getHeaders();
-        return fetch(path, {
+      async post(path, body, token) {
+        const headers = await _getHeaders(token);
+        return fetch(fetch_url + path, {
           headers,
           method: "POST",
           body: JSON.stringify(body),

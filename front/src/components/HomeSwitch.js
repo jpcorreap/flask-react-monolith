@@ -2,20 +2,23 @@ import { AppBar, Grid, Hidden, IconButton, Toolbar } from "@mui/material";
 import EventsList from "../screens/EventsList";
 import Login from "../screens/Login";
 import ExitToAppIcon from "@mui/icons-material/ExitToApp";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 const HomeSwitch = () => {
-  alert(localStorage.getItem("token"));
+  /*alert(localStorage.getItem("token"));
   const userSignedIn = useMemo(
     () => !!localStorage.getItem("token"),
     [localStorage]
-  );
-  const username = "aaaaaa@gmail.com";
+  );*/
 
-  if (!userSignedIn) return <Login />;
+  const [username, setUsername] = useState();
+  const [token, setToken] = useState();
+
+  if (!token) return <Login setUsername={setUsername} setToken={setToken} />;
 
   const handleLogout = () => {
-    alert("Sign out del usuario");
+    setUsername();
+    setToken();
   };
 
   return (
@@ -132,208 +135,7 @@ const HomeSwitch = () => {
           </Grid>
         </Toolbar>
       </AppBar>
-      <EventsList
-        rows={[
-          {
-            modality: "Presencial",
-            address: "Carrera 1 Este",
-            category: "Conferencia",
-            start: "2022-02-02T00:00:00",
-            place: "Edificio ML",
-            end: "2022-02-03T00:00:00",
-            owner: "test2@test.com",
-            name: "Evento 1",
-            id: 1,
-          },
-          {
-            modality: "Presencial",
-            address: "Carrera 1 Este",
-            category: "Conferencia",
-            start: "2022-02-02T00:00:00",
-            place: "Edificio ML",
-            end: "2022-02-03T00:00:00",
-            owner: "test2@test.com",
-            name: "Evento 2",
-            id: 2,
-          },
-          {
-            modality: "Presencial",
-            address: "Carrera 1 Este",
-            category: "Conferencia",
-            start: "2022-02-02T00:00:00",
-            place: "Edificio ML",
-            end: "2022-02-03T00:00:00",
-            owner: "test2@test.com",
-            name: "Evento 3",
-            id: 3,
-          },
-          {
-            modality: "Presencial",
-            address: "Carrera 1 Este",
-            category: "Conferencia",
-            start: "2022-02-02T00:00:00",
-            place: "Edificio ML",
-            end: "2022-02-03T00:00:00",
-            owner: "test2@test.com",
-            name: "Evento 1",
-            id: 4,
-          },
-          {
-            modality: "Presencial",
-            address: "Carrera 1 Este",
-            category: "Conferencia",
-            start: "2022-02-02T00:00:00",
-            place: "Edificio ML",
-            end: "2022-02-03T00:00:00",
-            owner: "test2@test.com",
-            name: "Evento 2",
-            id: 5,
-          },
-          {
-            modality: "Presencial",
-            address: "Carrera 1 Este",
-            category: "Conferencia",
-            start: "2022-02-02T00:00:00",
-            place: "Edificio ML",
-            end: "2022-02-03T00:00:00",
-            owner: "test2@test.com",
-            name: "Evento 3",
-            id: 6,
-          },
-          {
-            modality: "Presencial",
-            address: "Carrera 1 Este",
-            category: "Conferencia",
-            start: "2022-02-02T00:00:00",
-            place: "Edificio ML",
-            end: "2022-02-03T00:00:00",
-            owner: "test2@test.com",
-            name: "Evento 1",
-            id: 7,
-          },
-          {
-            modality: "Presencial",
-            address: "Carrera 1 Este",
-            category: "Conferencia",
-            start: "2022-02-02T00:00:00",
-            place: "Edificio ML",
-            end: "2022-02-03T00:00:00",
-            owner: "test2@test.com",
-            name: "Evento 2",
-            id: 8,
-          },
-          {
-            modality: "Presencial",
-            address: "Carrera 1 Este",
-            category: "Conferencia",
-            start: "2022-02-02T00:00:00",
-            place: "Edificio ML",
-            end: "2022-02-03T00:00:00",
-            owner: "test2@test.com",
-            name: "Evento 3",
-            id: 9,
-          },
-          {
-            modality: "Presencial",
-            address: "Carrera 1 Este",
-            category: "Conferencia",
-            start: "2022-02-02T00:00:00",
-            place: "Edificio ML",
-            end: "2022-02-03T00:00:00",
-            owner: "test2@test.com",
-            name: "Evento 1",
-            id: 10,
-          },
-          {
-            modality: "Presencial",
-            address: "Carrera 1 Este",
-            category: "Conferencia",
-            start: "2022-02-02T00:00:00",
-            place: "Edificio ML",
-            end: "2022-02-03T00:00:00",
-            owner: "test2@test.com",
-            name: "Evento 2",
-            id: 11,
-          },
-          {
-            modality: "Presencial",
-            address: "Carrera 1 Este",
-            category: "Conferencia",
-            start: "2022-02-02T00:00:00",
-            place: "Edificio ML",
-            end: "2022-02-03T00:00:00",
-            owner: "test2@test.com",
-            name: "Evento 3",
-            id: 12,
-          },
-          {
-            modality: "Presencial",
-            address: "Carrera 1 Este",
-            category: "Conferencia",
-            start: "2022-02-02T00:00:00",
-            place: "Edificio ML",
-            end: "2022-02-03T00:00:00",
-            owner: "test2@test.com",
-            name: "Evento 1",
-            id: 13,
-          },
-          {
-            modality: "Presencial",
-            address: "Carrera 1 Este",
-            category: "Conferencia",
-            start: "2022-02-02T00:00:00",
-            place: "Edificio ML",
-            end: "2022-02-03T00:00:00",
-            owner: "test2@test.com",
-            name: "Evento 2",
-            id: 14,
-          },
-          {
-            modality: "Presencial",
-            address: "Carrera 1 Este",
-            category: "Conferencia",
-            start: "2022-02-02T00:00:00",
-            place: "Edificio ML",
-            end: "2022-02-03T00:00:00",
-            owner: "test2@test.com",
-            name: "Evento 3",
-            id: 15,
-          },
-          {
-            modality: "Presencial",
-            address: "Carrera 1 Este",
-            category: "Conferencia",
-            start: "2022-02-02T00:00:00",
-            place: "Edificio ML",
-            end: "2022-02-03T00:00:00",
-            owner: "test2@test.com",
-            name: "Evento 1",
-            id: 16,
-          },
-          {
-            modality: "Presencial",
-            address: "Carrera 1 Este",
-            category: "Conferencia",
-            start: "2022-02-02T00:00:00",
-            place: "Edificio ML",
-            end: "2022-02-03T00:00:00",
-            owner: "test2@test.com",
-            name: "Evento 2",
-            id: 17,
-          },
-          {
-            modality: "Presencial",
-            address: "Carrera 1 Este",
-            category: "Conferencia",
-            start: "2022-02-02T00:00:00",
-            place: "Edificio ML",
-            end: "2022-02-03T00:00:00",
-            owner: "test2@test.com",
-            name: "Evento 3",
-            id: 18,
-          },
-        ]}
-      />
+      <EventsList token={token} />
     </Grid>
   );
 };

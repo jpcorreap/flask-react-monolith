@@ -4,7 +4,7 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import except_
 from werkzeug.security import generate_password_hash, check_password_hash
 import uuid
-import jwt
+from flask_jwt_extended import get_jwt_identity, jwt_required, create_access_token, JWTManager
 from datetime import datetime, timedelta
 from functools import wraps
 from flask_marshmallow import Marshmallow
@@ -12,7 +12,8 @@ from enum import Enum
 from flask_cors import CORS
 
 
-app = Flask(__name__) 
+app = Flask(__name__)
+# app = Flask(__name__, static_folder="front/build", static_url_path="/")
 CORS(app)
 
 app.config['SECRET_KEY'] = 'este_es_un_secreto'
@@ -25,6 +26,8 @@ api = Api(app)
 
 with app.app_context():
   db.create_all()
+
+jwt = JWTManager(app)
 
 # ------------------
 # Acts kind of enums
@@ -67,23 +70,6 @@ users_schema = User_Schema(many=True)
 event_schema = Event_Schema()
 events_schema = Event_Schema(many=True)
 
-# ---------------
-# Auth function
-# ---------------
-def token_required(f):
-  @wraps(f)
-  def decorator(*args, **kwargs):
-    token = None
-    if 'Authorization' in request.headers and 'Bearer' in request.headers['Authorization']:
-      token = request.headers['Authorization'].split(" ")[1]
-    try:
-      data = jwt.decode(token, app.config['SECRET_KEY'], algorithms=["HS256"])
-      current_user = User.query.filter_by(email=data['email']).first()
-    except:
-      return jsonify({'message': 'invalid token'})
-    return f(*args, current_user, **kwargs)
-  return decorator
-
 # --------------
 # API Resources
 # --------------
@@ -99,25 +85,23 @@ class SignupResource(Resource):
 
 class LoginResource(Resource):
   def post(self):
-    # auth = request.authorization
-    # if not auth or not auth.email or not auth.password:
-    # return make_response('unauthorized', 401, {'WWW.Authentication': 'Basic realm: "login required"'})    
-    user = User.query.filter_by(email=request.json['email']).first()
-
-    if user and check_password_hash(user.password, request.json['password']):
-      token = jwt.encode({'email': user.email, 'exp' : datetime.utcnow() + timedelta(hours=2)}, app.config['SECRET_KEY'])  
-      return jsonify({'token' : token})
+    user = User.query.filter_by(email=request.json["email"]).first()
+    if check_password_hash(user.password, request.json["password"]):
+      access_token = create_access_token(
+        identity=user.email, expires_delta=timedelta(hours=2)
+      )
+      return {"token": access_token}, 200
     else:
-      return make_response('Wrong user or password', 401, {'WWW.Authentication': 'Basic realm: "login required"'})
+      return "Wrong email or password", 401
 
 class EventsResource(Resource):
-  @token_required
-  def get(self, current_user):
-    events = Event.query.filter_by(owner=current_user.email).all()
+  @jwt_required()
+  def get(self):
+    events = Event.query.filter_by(owner=get_jwt_identity()).all()
     return events_schema.dump(events)
   
-  @token_required
-  def post(self, current_user):
+  @jwt_required()
+  def post(self):
     if request.json['category'] not in valid_categories:
       return make_response('Invalid category, it must be at least one of: ' + ', '.join(valid_categories), 400)
     if request.json['modality'] not in valid_modalities:
@@ -130,7 +114,7 @@ class EventsResource(Resource):
       start = datetime.strptime(request.json["start"], "%d/%m/%Y"),
       end = datetime.strptime(request.json["end"], "%d/%m/%Y"),
       modality = request.json['modality'],
-      owner = current_user.email
+      owner = get_jwt_identity()
     )
     try:
       db.session.add(new_event)
@@ -140,32 +124,34 @@ class EventsResource(Resource):
       return make_response('Error', 400)
 
 class SpecificEventResource(Resource):
-  # @token_required
+  @jwt_required()
   def get(self, event_id):
-      token = token_required(request)()
-      print('hee hee token', token)
-      print('hee hee request', self)
-      print('hee hee event_id', request)
-      event = Event.query.get_or_404(1)
-      return event_schema.dump(event)
+    event = Event.query.filter_by(owner=get_jwt_identity(), id=event_id).first_or_404()
+    return event_schema.dump(event)
   
-  @token_required
-  def put(self, current_user, event_id):
-      event = Event.query.get_or_404(event_id, owner=current_user.email).first()
-      if 'title' in request.json:
-          event.title = request.json['title']
-      if 'content' in request.json:
-          event.content = request.json['content']
+  @jwt_required()
+  def put(self, event_id):
+    event = Event.query.get_or_404(id=event_id, owner=get_jwt_identity()).first()
+    if request.json['category'] not in valid_categories:
+      return make_response('Invalid category, it must be at least one of: ' + ', '.join(valid_categories), 400)
+    if request.json['modality'] not in valid_modalities:
+      return make_response('Invalid modality, it must be at least one of: ' + ', '.join(valid_modalities), 400)
+    event.name = request.json["name"]
+    event.category = request.json["category"]
+    event.place = request.json["place"]
+    event.address = request.json["address"]
+    event.start = datetime.strptime(request.json["start"], "%Y-%m-%d")
+    event.end = datetime.strptime(request.json["end"], "%Y-%m-%d")
+    event.modality = request.json["modality"]
+    db.session.commit()
+    return event_schema.dump(event)
 
-      db.session.commit()
-      return event_schema.dump(event)
-
-  @token_required
+  @jwt_required()
   def delete(self, event_id):
-      publicacion = Event.query.get_or_404(event_id)
-      db.session.delete(publicacion)
-      db.session.commit()
-      return '', 204
+    events = Event.query.filter_by(owner=get_jwt_identity(), id=event_id).first_or_404()
+    db.session.delete(events)
+    db.session.commit()
+    return 'Deleted', 200
 
 api.add_resource(SignupResource, '/auth/signup')
 api.add_resource(LoginResource, '/auth/login')
