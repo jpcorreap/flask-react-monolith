@@ -14,7 +14,7 @@ function Register() {
 
   const handleRegister = () => {
     console.info(state);
-    post("/auth/login", state)
+    post("/auth/register", state)
       .then((response) => {
         if (response.status === 200)
           alert("Usuario creado exitosamente, diríjase a la pantalla de login");
