@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from "react";
 
-const fetch_url = "http://localhost:5000";
+const fetch_url =
+  process.env.NODE_ENV === "production" ? "" : "http://localhost:5000";
 
 export default function useFetchRequest() {
   const _getHeaders = useCallback(async (token) => {
