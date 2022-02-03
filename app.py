@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify, make_response   
 from flask_restful import Api, Resource
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import except_
 from werkzeug.security import generate_password_hash, check_password_hash
 import uuid
 import jwt
@@ -8,9 +9,11 @@ from datetime import datetime, timedelta
 from functools import wraps
 from flask_marshmallow import Marshmallow
 from enum import Enum
+from flask_cors import CORS
 
 
 app = Flask(__name__) 
+CORS(app)
 
 app.config['SECRET_KEY'] = 'este_es_un_secreto'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///test.db'
@@ -23,18 +26,11 @@ api = Api(app)
 with app.app_context():
   db.create_all()
 
-# ------
-# Enums
-# ------
-class Categories(str, Enum):
-  CONFERENCE = "Conferencia"
-  SEMINAR = "Seminario"
-  CONGRESS = "Congreso"
-  COURSE = "Curso"
-
-class Modalities(str, Enum):
-  FACE_TO_FACE = "Presencial"
-  VIRTUAL = "Virtual"
+# ------------------
+# Acts kind of enums
+# ------------------
+valid_categories = ["Conferencia", "Seminario", "Congreso", "Curso"]
+valid_modalities = ["Presencial", "Virtual"]
 
 # ---------------------
 #  Classes and schemas
@@ -80,14 +76,11 @@ def token_required(f):
     token = None
     if 'Authorization' in request.headers and 'Bearer' in request.headers['Authorization']:
       token = request.headers['Authorization'].split(" ")[1]
-      print("Token", token)
-    if not token:
-      return jsonify({'message': 'unauthorized'})
     try:
       data = jwt.decode(token, app.config['SECRET_KEY'], algorithms=["HS256"])
       current_user = User.query.filter_by(email=data['email']).first()
     except:
-      return jsonify({'message': 'token is invalid'})
+      return jsonify({'message': 'invalid token'})
     return f(*args, current_user, **kwargs)
   return decorator
 
@@ -120,13 +113,15 @@ class LoginResource(Resource):
 class EventsResource(Resource):
   @token_required
   def get(self, current_user):
-    print("No sé qué poner", self)
-    print("No sé qué poner", current_user)
     events = Event.query.filter_by(owner=current_user.email).all()
     return events_schema.dump(events)
   
   @token_required
   def post(self, current_user):
+    if request.json['category'] not in valid_categories:
+      return make_response('Invalid category, it must be at least one of: ' + ', '.join(valid_categories), 400)
+    if request.json['modality'] not in valid_modalities:
+      return make_response('Invalid modality, it must be at least one of: ' + ', '.join(valid_modalities), 400)
     new_event = Event(
       name = request.json['name'],
       category = request.json['category'],
@@ -137,16 +132,22 @@ class EventsResource(Resource):
       modality = request.json['modality'],
       owner = current_user.email
     )
-    print(new_event)
-    db.session.add(new_event)
-    db.session.commit()
-    return event_schema.dump(new_event)
+    try:
+      db.session.add(new_event)
+      db.session.commit()
+      return event_schema.dump(new_event)
+    except:
+      return make_response('Error', 400)
 
 class SpecificEventResource(Resource):
-  @token_required
+  # @token_required
   def get(self, event_id):
-      event = Event.query.get_or_404(event_id)
-      return events_schema.dump(event)
+      token = token_required(request)()
+      print('hee hee token', token)
+      print('hee hee request', self)
+      print('hee hee event_id', request)
+      event = Event.query.get_or_404(1)
+      return event_schema.dump(event)
   
   @token_required
   def put(self, current_user, event_id):
@@ -157,7 +158,7 @@ class SpecificEventResource(Resource):
           event.content = request.json['content']
 
       db.session.commit()
-      return events_schema.dump(event)
+      return event_schema.dump(event)
 
   @token_required
   def delete(self, event_id):

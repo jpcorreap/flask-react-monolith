@@ -1,5 +1,6 @@
 Flask
 flask_restful
+flask_cors
 flask_marshmallow
 marshmallow-sqlalchemy
 PyJWT
